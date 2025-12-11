@@ -64,7 +64,19 @@ st.markdown(f"""
     }}
     p, span, label, div {{
         color: {TEXT_COLOR} !important;
+    }}
+    p, label, div {{
         font-family: 'Rajdhani', sans-serif !important;
+    }}
+    /* Exclude material icons from font override */
+    span:not([data-testid="stIconMaterial"]):not(.material-icons):not(.material-symbols-rounded) {{
+        font-family: 'Rajdhani', sans-serif !important;
+    }}
+    [data-testid="stSidebarCollapseButton"] span,
+    [data-testid="collapsedControl"] span,
+    .material-symbols-rounded,
+    .material-icons {{
+        font-family: 'Material Symbols Rounded', 'Material Icons' !important;
     }}
     .stSelectbox label, .stMultiSelect label, .stSlider label, .stDateInput label {{
         color: {TEXT_COLOR} !important;
@@ -138,7 +150,7 @@ def load_data():
 df = load_data()
 
 # Sidebar filters
-st.sidebar.title("🎛️ Filters")
+st.sidebar.title("Universal Filters")
 
 # Initialize filter variables
 selected_party = 'All'
