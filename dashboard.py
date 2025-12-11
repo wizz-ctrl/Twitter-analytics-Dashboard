@@ -1156,3 +1156,19 @@ if 'sentiment' in filtered_df.columns and 'party' in filtered_df.columns:
 # Footer
 st.markdown("---")
 st.markdown(f"<p style='text-align: center; color: #9CB770; font-family: Rajdhani, sans-serif;'>Pakistan's Political Discourse Analytics | Data Visualization Project</p>", unsafe_allow_html=True)
+st.markdown("""
+<div style='text-align: center; color: #9CB770; font-family: Rajdhani, sans-serif;'>
+    <p style='margin-bottom: 5px;'><strong>Developed by:</strong></p>
+    <p style='margin: 2px 0;'>Taimoor Safdar</p>
+    <p style='margin: 2px 0;'>Soaem</p>
+    <p style='margin: 2px 0;'>Roshan Jalil</p>
+    <p style='margin: 2px 0;'>Syed Fawwad Ahmad</p>
+    <br>
+    <p style='margin-top: 10px;'>© 2024 All Rights Reserved</p>
+    <p style='margin-top: 5px;'>
+        <a href='https://github.com/wizz-ctrl/Twitter-analytics-Dashboard' target='_blank' style='color: #C7E1BA;'>
+          Access Code & Dataset on GitHub
+        </a>
+    </p>
+</div>
+""", unsafe_allow_html=True)
