@@ -35,8 +35,8 @@ LANGUAGE_COLORS = {
     'sindhi': '#8E44AD'
 }
 
-BACKGROUND_COLOR = '#0d1f0d'
-CARD_BACKGROUND = '#1a2e1a'
+BACKGROUND_COLOR = "#081108"
+CARD_BACKGROUND = "#122512"
 TEXT_COLOR = '#FFFFFF'
 
 # Only these languages to show
@@ -83,11 +83,18 @@ st.markdown(f"""
     .stSelectbox, .stMultiSelect {{
         font-family: 'Rajdhani', sans-serif !important;
     }}
+    /* Change multiselect tag colors from red to green */
+    span[data-baseweb="tag"] {{
+        background-color: #628B61 !important;
+    }}
+    span[data-baseweb="tag"] span {{
+        color: white !important;
+    }}
     </style>
 """, unsafe_allow_html=True)
 
 # Main Title with Magneto-style font (using Orbitron as web alternative)
-st.markdown('<h1 class="main-title">🇵🇰 Pakistan\'s Political Discourse Analytics</h1>', unsafe_allow_html=True)
+st.markdown('<h1 class="main-title">Pakistan\'s Political Discourse Analytics</h1>', unsafe_allow_html=True)
 st.markdown("---")
 
 # Load and clean data
@@ -199,11 +206,12 @@ day_order_heatmap = ['Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tues
 # ==================== VISUALIZATION 1: Tweet Count by Hour of Day (Heatmap) ====================
 st.subheader("Tweet Count by Hour of the Day")
 
-# Heatmap-specific filters
-heatmap_col1, heatmap_col2, heatmap_col3 = st.columns([2, 2, 6])
-with heatmap_col1:
+# Create columns: chart on left, filters on right
+heatmap_chart_col, heatmap_filter_col = st.columns([7, 3])
+
+with heatmap_filter_col:
+    st.markdown("##### Filters")
     heatmap_party_filter = st.selectbox("Party (Heatmap)", ['All'] + sorted(df['party'].dropna().unique().tolist()), key='heatmap_party')
-with heatmap_col2:
     heatmap_days = st.multiselect("Days", day_order_heatmap, default=day_order_heatmap, key='heatmap_days')
 
 # Apply heatmap-specific filters
@@ -213,50 +221,53 @@ if heatmap_party_filter != 'All':
 if heatmap_days:
     heatmap_df = heatmap_df[heatmap_df['day_of_week'].isin(heatmap_days)]
 
-if 'hour' in heatmap_df.columns and 'day_of_week' in heatmap_df.columns:
-    heatmap_data = heatmap_df.groupby(['day_of_week', 'hour']).size().reset_index(name='count')
-    heatmap_pivot = heatmap_data.pivot(index='day_of_week', columns='hour', values='count').fillna(0)
-    
-    for h in range(24):
-        if h not in heatmap_pivot.columns:
-            heatmap_pivot[h] = 0
-    heatmap_pivot = heatmap_pivot[sorted(heatmap_pivot.columns)]
-    heatmap_pivot = heatmap_pivot.reindex([d for d in day_order_heatmap if d in heatmap_pivot.index])
-    
-    fig_heatmap = go.Figure(data=go.Heatmap(
-        z=heatmap_pivot.values,
-        x=[str(c) for c in heatmap_pivot.columns],
-        y=heatmap_pivot.index,
-        colorscale=[[0, '#E8F5E9'], [0.25, '#C7E1BA'], [0.5, '#9CB770'], [0.75, '#628B61'], [1, '#2E5A2E']],
-        hovertemplate='Hour: %{x}<br>Day: %{y}<br>Tweet Count: %{z}<extra></extra>',
-        showscale=True,
-        text=heatmap_pivot.values.astype(int),
-        texttemplate='%{text}',
-        textfont={'size': 9, 'color': '#1a1a2e'}
-    ))
-    
-    fig_heatmap.update_layout(
-        **layout_template,
-        xaxis_title="Hour of Day",
-        yaxis_title="Day of Week",
-        height=320,
-        margin=dict(l=100, r=20, t=30, b=50),
-        xaxis=dict(side='top', tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR)),
-        yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR))
-    )
-    
-    st.plotly_chart(fig_heatmap, use_container_width=True, config=plot_config)
+with heatmap_chart_col:
+    if 'hour' in heatmap_df.columns and 'day_of_week' in heatmap_df.columns:
+        heatmap_data = heatmap_df.groupby(['day_of_week', 'hour']).size().reset_index(name='count')
+        heatmap_pivot = heatmap_data.pivot(index='day_of_week', columns='hour', values='count').fillna(0)
+        
+        for h in range(24):
+            if h not in heatmap_pivot.columns:
+                heatmap_pivot[h] = 0
+        heatmap_pivot = heatmap_pivot[sorted(heatmap_pivot.columns)]
+        heatmap_pivot = heatmap_pivot.reindex([d for d in day_order_heatmap if d in heatmap_pivot.index])
+        
+        fig_heatmap = go.Figure(data=go.Heatmap(
+            z=heatmap_pivot.values,
+            x=[str(c) for c in heatmap_pivot.columns],
+            y=heatmap_pivot.index,
+            colorscale=[[0, '#E8F5E9'], [0.25, '#C7E1BA'], [0.5, '#9CB770'], [0.75, '#628B61'], [1, '#2E5A2E']],
+            hovertemplate='Hour: %{x}<br>Day: %{y}<br>Tweet Count: %{z}<extra></extra>',
+            showscale=True,
+            text=heatmap_pivot.values.astype(int),
+            texttemplate='%{text}',
+            textfont={'size': 9, 'color': '#1a1a2e'}
+        ))
+        
+        fig_heatmap.update_layout(
+            **layout_template,
+            xaxis_title="Hour of Day",
+            yaxis_title="Day of Week",
+            height=320,
+            margin=dict(l=100, r=20, t=30, b=50),
+            xaxis=dict(side='top', tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR)),
+            yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR))
+        )
+        
+        st.plotly_chart(fig_heatmap, use_container_width=True, config=plot_config)
 
 st.markdown("---")
 
 # ==================== VISUALIZATION 2: Tweet Count by Day and Party (Ribbon Chart) ====================
 st.subheader("Tweet Count by Day and Party")
 
-# Ribbon chart 1 specific filters
-ribbon1_col1, ribbon1_col2, ribbon1_col3 = st.columns([2, 2, 6])
-with ribbon1_col1:
+# Create columns for chart and filters
+ribbon1_chart_col, ribbon1_filter_col = st.columns([7, 3])
+
+# Ribbon chart 1 specific filters (in the right column)
+with ribbon1_filter_col:
+    st.markdown("#### Filters")
     ribbon1_parties = st.multiselect("Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='ribbon1_parties')
-with ribbon1_col2:
     ribbon1_days = st.multiselect("Days", day_order, default=day_order, key='ribbon1_days')
 
 # Apply ribbon1-specific filters
@@ -366,18 +377,21 @@ if 'day_of_week' in ribbon1_df.columns and 'party' in ribbon1_df.columns:
         yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d2d44')
     )
     
-    st.plotly_chart(fig_ribbon1, use_container_width=True, config=plot_config)
+    with ribbon1_chart_col:
+        st.plotly_chart(fig_ribbon1, use_container_width=True, config=plot_config)
 
 st.markdown("---")
 
 # ==================== VISUALIZATION 3: Engagement Score by Day and Party (Ribbon Chart) ====================
 st.subheader("Engagement Score by Day and Party")
 
-# Ribbon chart 2 specific filters
-ribbon2_col1, ribbon2_col2, ribbon2_col3 = st.columns([2, 2, 6])
-with ribbon2_col1:
+# Create columns for chart and filters
+ribbon2_chart_col, ribbon2_filter_col = st.columns([7, 3])
+
+# Ribbon chart 2 specific filters (in the right column)
+with ribbon2_filter_col:
+    st.markdown("#### Filters")
     ribbon2_parties = st.multiselect("Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='ribbon2_parties')
-with ribbon2_col2:
     ribbon2_days = st.multiselect("Days", day_order, default=day_order, key='ribbon2_days')
 
 # Apply ribbon2-specific filters
@@ -491,7 +505,8 @@ if 'day_of_week' in ribbon2_df.columns and 'party' in ribbon2_df.columns and 'en
         )
     )
     
-    st.plotly_chart(fig_ribbon2, use_container_width=True, config=plot_config)
+    with ribbon2_chart_col:
+        st.plotly_chart(fig_ribbon2, use_container_width=True, config=plot_config)
 
 st.markdown("---")
 
@@ -504,8 +519,10 @@ pie_col, bar_col = st.columns(2)
 with pie_col:
     st.markdown("**Tweet Count by Language**")
     
-    # Pie chart specific filter
+    # Pie chart specific filter - with fixed height container
+    st.markdown('<div style="height: 110px; display: flex; flex-direction: column;">', unsafe_allow_html=True)
     pie_party_filter = st.selectbox("Filter by Party", ['All'] + sorted(df['party'].dropna().unique().tolist()), key='pie_party')
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Apply pie-specific filter
     pie_df = filtered_df_lang.copy()
@@ -563,8 +580,10 @@ with pie_col:
 with bar_col:
     st.markdown("**Tweet Count by Party and Language**")
     
-    # Bar chart specific filters
+    # Bar chart specific filters - with fixed height container
+    st.markdown('<div style="height: 110px; display: flex; flex-direction: column;">', unsafe_allow_html=True)
     bar1_lang_filter = st.multiselect("Select Languages", ALLOWED_LANGUAGES, default=ALLOWED_LANGUAGES[:6], key='bar1_langs')
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # Apply bar1-specific filter
     bar1_df = filtered_df_lang.copy()
@@ -618,11 +637,13 @@ st.markdown("---")
 # ==================== VISUALIZATION 6: Sum of Engagement Score by Language and Party (Grouped Bar) ====================
 st.subheader("Sum of Engagement Score by Language and Party")
 
-# Engagement bar chart specific filters
-eng_col1, eng_col2, eng_col3 = st.columns([2, 2, 6])
-with eng_col1:
+# Create columns for chart and filters
+eng_chart_col, eng_filter_col = st.columns([7, 3])
+
+# Engagement bar chart specific filters (in the right column)
+with eng_filter_col:
+    st.markdown("#### Filters")
     eng_parties = st.multiselect("Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='eng_parties')
-with eng_col2:
     eng_langs = st.multiselect("Languages", ALLOWED_LANGUAGES, default=ALLOWED_LANGUAGES, key='eng_langs')
 
 # Apply engagement chart specific filters
@@ -684,7 +705,8 @@ if 'party' in eng_df.columns and 'language' in eng_df.columns and 'engagement_sc
         margin=dict(b=100, t=80)
     )
     
-    st.plotly_chart(fig_bar2, use_container_width=True, config=plot_config)
+    with eng_chart_col:
+        st.plotly_chart(fig_bar2, use_container_width=True, config=plot_config)
 
 # Footer
 st.markdown("---")
