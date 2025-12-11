@@ -513,22 +513,37 @@ st.markdown("---")
 # ==================== VISUALIZATION 4 & 5: Tweet Count by Language (Donut) & by Party and Language (Bar) - SIDE BY SIDE ====================
 st.subheader("Language Distribution Analysis")
 
-# Create two columns for side-by-side visualizations
-pie_col, bar_col = st.columns(2)
-
-with pie_col:
+# First row: Titles
+title_col1, title_col2 = st.columns(2)
+with title_col1:
     st.markdown("**Tweet Count by Language**")
-    
-    # Pie chart specific filter - with fixed height container
-    st.markdown('<div style="height: 110px; display: flex; flex-direction: column;">', unsafe_allow_html=True)
+with title_col2:
+    st.markdown("**Tweet Count by Party and Language**")
+
+# Second row: Filters in a fixed height container
+filter_col1, filter_col2 = st.columns(2)
+with filter_col1:
     pie_party_filter = st.selectbox("Filter by Party", ['All'] + sorted(df['party'].dropna().unique().tolist()), key='pie_party')
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Apply pie-specific filter
-    pie_df = filtered_df_lang.copy()
-    if pie_party_filter != 'All':
-        pie_df = pie_df[pie_df['party'] == pie_party_filter]
-    
+with filter_col2:
+    bar1_lang_filter = st.multiselect("Select Languages", ALLOWED_LANGUAGES, default=ALLOWED_LANGUAGES[:6], key='bar1_langs')
+
+# Add fixed spacer to ensure charts always start at same position regardless of filter height
+st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+
+# Third row: Charts (always aligned)
+chart_col1, chart_col2 = st.columns(2)
+
+# Apply pie-specific filter
+pie_df = filtered_df_lang.copy()
+if pie_party_filter != 'All':
+    pie_df = pie_df[pie_df['party'] == pie_party_filter]
+
+# Apply bar1-specific filter
+bar1_df = filtered_df_lang.copy()
+if bar1_lang_filter:
+    bar1_df = bar1_df[bar1_df['language'].isin(bar1_lang_filter)]
+
+with chart_col1:
     if 'language' in pie_df.columns:
         lang_counts = pie_df['language'].value_counts().reset_index()
         lang_counts.columns = ['language', 'count']
@@ -577,19 +592,7 @@ with pie_col:
         
         st.plotly_chart(fig_pie, use_container_width=True, config=plot_config)
 
-with bar_col:
-    st.markdown("**Tweet Count by Party and Language**")
-    
-    # Bar chart specific filters - with fixed height container
-    st.markdown('<div style="height: 110px; display: flex; flex-direction: column;">', unsafe_allow_html=True)
-    bar1_lang_filter = st.multiselect("Select Languages", ALLOWED_LANGUAGES, default=ALLOWED_LANGUAGES[:6], key='bar1_langs')
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Apply bar1-specific filter
-    bar1_df = filtered_df_lang.copy()
-    if bar1_lang_filter:
-        bar1_df = bar1_df[bar1_df['language'].isin(bar1_lang_filter)]
-    
+with chart_col2:
     if 'party' in bar1_df.columns and 'language' in bar1_df.columns:
         party_lang = bar1_df.groupby(['party', 'language']).size().reset_index(name='count')
         
