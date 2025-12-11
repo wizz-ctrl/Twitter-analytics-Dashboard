@@ -865,6 +865,294 @@ if 'topic' in filtered_df.columns and 'party' in filtered_df.columns:
             
             st.plotly_chart(fig_engagement_bar, use_container_width=True, config=plot_config)
 
+st.markdown("---")
+
+# ==================== VISUALIZATION 10 & 11: Stance Analysis (Side by Side) ====================
+st.subheader("Stance Analysis")
+
+# First row: Titles
+stance_title_col1, stance_title_col2 = st.columns(2)
+with stance_title_col1:
+    st.markdown("**Tweet Count by Stance and Party**")
+with stance_title_col2:
+    st.markdown("**Tweet Count by Stance and Party (Distribution of opposing stances along with supporting stances)**")
+
+# Second row: Filters
+stance_filter_col1, stance_filter_col2 = st.columns(2)
+with stance_filter_col1:
+    stance_parties_filter = st.multiselect("Select Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='stance_parties')
+with stance_filter_col2:
+    st.markdown("")  # Empty placeholder for alignment
+
+# Add fixed spacer
+st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+
+# Third row: Charts
+stance_chart_col1, stance_chart_col2 = st.columns(2)
+
+if 'stance' in filtered_df.columns and 'party' in filtered_df.columns:
+    # Define main stances for first chart
+    main_stances = ['PMLN:support', 'PTI:support', 'PPP:support', 'PMLN:oppose', 'PTI:oppose', 'PPP:oppose']
+    
+    # Define combined stances for second chart (support-oppose combinations)
+    combined_stances = ['PTIsupport,PMLNoppose', 'PTIsupport,PPPoppose', 'PPPsupport,PTIoppose', 
+                        'PPPsupport,PMLNoppose', 'PMLNsupport,PPPoppose', 'PMLN:support,PTI:oppose']
+    
+    # CHART 1: Tweet Count by Stance and Party (main stances)
+    with stance_chart_col1:
+        # Filter for main stances
+        stance_df = filtered_df[filtered_df['stance'].isin(main_stances)]
+        stance_party_counts = stance_df.groupby(['stance', 'party']).size().reset_index(name='count')
+        
+        fig_stance_bar = go.Figure()
+        
+        parties_to_show = stance_parties_filter if stance_parties_filter else ['PMLN', 'PPP', 'PTI']
+        for party in parties_to_show:
+            party_data = stance_party_counts[stance_party_counts['party'] == party]
+            party_dict = dict(zip(party_data['stance'], party_data['count']))
+            ordered_values = [party_dict.get(stance, 0) for stance in main_stances]
+            
+            fig_stance_bar.add_trace(go.Bar(
+                x=main_stances,
+                y=ordered_values,
+                name=party,
+                marker_color=PARTY_COLORS.get(party),
+                hovertemplate='Stance: %{x}<br>Party: ' + party + '<br>Count: %{y:,}<extra></extra>'
+            ))
+        
+        fig_stance_bar.update_layout(
+            **layout_template,
+            xaxis_title="Stance",
+            yaxis_title="Tweet Count",
+            height=450,
+            barmode='group',
+            legend=dict(
+                orientation='h', 
+                yanchor='bottom', 
+                y=1.02, 
+                xanchor='left', 
+                x=0, 
+                font=dict(color=TEXT_COLOR),
+                itemsizing='constant'
+            ),
+            xaxis=dict(
+                tickfont=dict(color=TEXT_COLOR, size=9), 
+                title_font=dict(color=TEXT_COLOR), 
+                gridcolor='#2d4d2d',
+                tickangle=45
+            ),
+            yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d4d2d'),
+            margin=dict(b=120, t=60)
+        )
+        
+        st.plotly_chart(fig_stance_bar, use_container_width=True, config=plot_config)
+    
+    # CHART 2: Distribution of opposing stances along with supporting stances
+    with stance_chart_col2:
+        # Create a mapping for combined stances (search for patterns)
+        combined_stance_data = []
+        
+        # Search for combined stance patterns in the data
+        stance_patterns = {
+            'PTIsupport,PMLNoppose': ['PTI:support,PMLN:oppose', 'PTI:support, PMLN:oppose'],
+            'PTIsupport,PPPoppose': ['PTI:support,PPP:oppose', 'PTI:support, PPP:oppose'],
+            'PPPsupport,PTIoppose': ['PPP:support,PTI:oppose', 'PPP:support, PTI:oppose'],
+            'PPPsupport,PMLNoppose': ['PPP:support,PMLN:oppose', 'PPP:support, PMLN:oppose'],
+            'PMLNsupport,PPPoppose': ['PMLN:support,PPP:oppose', 'PMLN:support, PPP:oppose'],
+            'PMLN:support,PTI:oppose': ['PMLN:support,PTI:oppose', 'PMLN:support, PTI:oppose']
+        }
+        
+        # Count occurrences for each combined stance pattern
+        combined_counts = {}
+        for label, patterns in stance_patterns.items():
+            count = 0
+            for pattern in patterns:
+                count += len(filtered_df[filtered_df['stance'].str.contains(pattern, na=False, regex=False)])
+            combined_counts[label] = count
+        
+        # Also check for partial matches
+        for idx, row in filtered_df.iterrows():
+            stance_val = str(row.get('stance', ''))
+            if 'PTI' in stance_val and 'support' in stance_val and 'PMLN' in stance_val and 'oppose' in stance_val:
+                if 'PTIsupport,PMLNoppose' not in combined_counts or combined_counts['PTIsupport,PMLNoppose'] == 0:
+                    combined_counts['PTIsupport,PMLNoppose'] = combined_counts.get('PTIsupport,PMLNoppose', 0) + 1
+        
+        # Create grouped bar for combined stances
+        combined_stance_df = filtered_df.copy()
+        combined_labels = list(combined_counts.keys())
+        
+        fig_combined_stance = go.Figure()
+        
+        for party in parties_to_show:
+            party_values = []
+            for label, patterns in stance_patterns.items():
+                count = 0
+                party_df = filtered_df[filtered_df['party'] == party]
+                for pattern in patterns:
+                    count += len(party_df[party_df['stance'].str.contains(pattern, na=False, regex=False)])
+                party_values.append(count)
+            
+            fig_combined_stance.add_trace(go.Bar(
+                x=combined_labels,
+                y=party_values,
+                name=party,
+                marker_color=PARTY_COLORS.get(party),
+                hovertemplate='Stance: %{x}<br>Party: ' + party + '<br>Count: %{y:,}<extra></extra>'
+            ))
+        
+        fig_combined_stance.update_layout(
+            **layout_template,
+            xaxis_title="Stance",
+            yaxis_title="Tweet Count",
+            height=450,
+            barmode='group',
+            legend=dict(
+                orientation='h', 
+                yanchor='bottom', 
+                y=1.02, 
+                xanchor='left', 
+                x=0, 
+                font=dict(color=TEXT_COLOR),
+                itemsizing='constant'
+            ),
+            xaxis=dict(
+                tickfont=dict(color=TEXT_COLOR, size=8), 
+                title_font=dict(color=TEXT_COLOR), 
+                gridcolor='#2d4d2d',
+                tickangle=45
+            ),
+            yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d4d2d'),
+            margin=dict(b=140, t=60)
+        )
+        
+        st.plotly_chart(fig_combined_stance, use_container_width=True, config=plot_config)
+
+st.markdown("---")
+
+# ==================== VISUALIZATION 12 & 13: Sentiment Analysis (Side by Side) ====================
+st.subheader("Sentiment Analysis")
+
+# First row: Titles
+sent_title_col1, sent_title_col2 = st.columns(2)
+with sent_title_col1:
+    st.markdown("**Tweet Count by Sentiment and Party**")
+with sent_title_col2:
+    st.markdown("**Engagement Score by Sentiment**")
+
+# Second row: Filters
+sent_filter_col1, sent_filter_col2 = st.columns(2)
+with sent_filter_col1:
+    sent_parties_filter = st.multiselect("Select Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='sent_parties')
+with sent_filter_col2:
+    st.markdown("")  # Empty placeholder for alignment
+
+# Add fixed spacer
+st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+
+# Third row: Charts
+sent_chart_col1, sent_chart_col2 = st.columns(2)
+
+if 'sentiment' in filtered_df.columns and 'party' in filtered_df.columns:
+    # Get all unique sentiments and sort by total count
+    sentiment_counts = filtered_df['sentiment'].value_counts()
+    all_sentiments = sentiment_counts.index.tolist()
+    
+    # CHART 1: Tweet Count by Sentiment and Party (Grouped Bar)
+    with sent_chart_col1:
+        sentiment_party_counts = filtered_df.groupby(['sentiment', 'party']).size().reset_index(name='count')
+        
+        fig_sentiment_bar = go.Figure()
+        
+        parties_to_show = sent_parties_filter if sent_parties_filter else ['PMLN', 'PPP', 'PTI']
+        for party in parties_to_show:
+            party_data = sentiment_party_counts[sentiment_party_counts['party'] == party]
+            party_dict = dict(zip(party_data['sentiment'], party_data['count']))
+            ordered_values = [party_dict.get(sent, 0) for sent in all_sentiments]
+            
+            fig_sentiment_bar.add_trace(go.Bar(
+                x=all_sentiments,
+                y=ordered_values,
+                name=party,
+                marker_color=PARTY_COLORS.get(party),
+                hovertemplate='Sentiment: %{x}<br>Party: ' + party + '<br>Count: %{y:,}<extra></extra>'
+            ))
+        
+        fig_sentiment_bar.update_layout(
+            **layout_template,
+            xaxis_title="Sentiment",
+            yaxis_title="Tweet Count",
+            height=450,
+            barmode='group',
+            legend=dict(
+                orientation='h', 
+                yanchor='bottom', 
+                y=1.02, 
+                xanchor='left', 
+                x=0, 
+                font=dict(color=TEXT_COLOR),
+                itemsizing='constant'
+            ),
+            xaxis=dict(
+                tickfont=dict(color=TEXT_COLOR, size=8), 
+                title_font=dict(color=TEXT_COLOR), 
+                gridcolor='#2d4d2d',
+                tickangle=45
+            ),
+            yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d4d2d'),
+            margin=dict(b=140, t=60)
+        )
+        
+        st.plotly_chart(fig_sentiment_bar, use_container_width=True, config=plot_config)
+    
+    # CHART 2: Engagement Score by Sentiment (Pie Chart)
+    with sent_chart_col2:
+        if 'engagement_score' in filtered_df.columns:
+            # Only show negative and positive (as per reference - neutral excluded)
+            main_sentiments = ['negative', 'positive']
+            sentiment_df = filtered_df[filtered_df['sentiment'].isin(main_sentiments)]
+            
+            # Aggregate engagement score by sentiment
+            sentiment_engagement = sentiment_df.groupby('sentiment')['engagement_score'].sum().reset_index()
+            sentiment_engagement = sentiment_engagement.sort_values('engagement_score', ascending=False)
+            
+            # Define colors for sentiments (using green shades)
+            sentiment_colors = {
+                'negative': '#628B61',
+                'positive': '#C7E1BA'
+            }
+            
+            colors = [sentiment_colors.get(sent, '#808080') for sent in sentiment_engagement['sentiment']]
+            
+            fig_sentiment_pie = go.Figure(data=[go.Pie(
+                labels=sentiment_engagement['sentiment'],
+                values=sentiment_engagement['engagement_score'],
+                marker=dict(colors=colors),
+                hovertemplate='Sentiment: %{label}<br>Engagement Score: %{value:,.2f}<br>Percentage: %{percent:.2%}<extra></extra>',
+                textinfo='label+percent',
+                textposition='auto',
+                textfont=dict(color='white', size=12),
+                hole=0
+            )])
+            
+            fig_sentiment_pie.update_layout(
+                **layout_template,
+                height=450,
+                showlegend=True,
+                legend=dict(
+                    orientation='v', 
+                    yanchor='middle', 
+                    y=0.5, 
+                    xanchor='right', 
+                    x=1.15, 
+                    font=dict(size=10, color=TEXT_COLOR),
+                    itemsizing='constant',
+                    title=dict(text='Sentiment', font=dict(color=TEXT_COLOR))
+                ),
+                margin=dict(t=60, b=30, l=30, r=120)
+            )
+            
+            st.plotly_chart(fig_sentiment_pie, use_container_width=True, config=plot_config)
+
 # Footer
 st.markdown("---")
 st.markdown(f"<p style='text-align: center; color: #9CB770; font-family: Rajdhani, sans-serif;'>Pakistan's Political Discourse Analytics | Data Visualization Project</p>", unsafe_allow_html=True)
