@@ -35,8 +35,8 @@ LANGUAGE_COLORS = {
     'sindhi': '#8E44AD'
 }
 
-BACKGROUND_COLOR = "#081108"
-CARD_BACKGROUND = "#122512"
+BACKGROUND_COLOR = "#051605"
+CARD_BACKGROUND = "#081508"
 TEXT_COLOR = '#FFFFFF'
 
 # Only these languages to show
@@ -710,6 +710,160 @@ if 'party' in eng_df.columns and 'language' in eng_df.columns and 'engagement_sc
     
     with eng_chart_col:
         st.plotly_chart(fig_bar2, use_container_width=True, config=plot_config)
+
+st.markdown("---")
+
+# ==================== VISUALIZATION 7: Tweet Count by Topic (Treemap) ====================
+st.subheader("Tweet Count by Topic")
+
+if 'topic' in filtered_df.columns:
+    # Count tweets by topic
+    topic_counts = filtered_df['topic'].value_counts().reset_index()
+    topic_counts.columns = ['topic', 'count']
+    
+    # Create treemap with custom color scale (Viridis but yellow replaced with light green)
+    fig_treemap = px.treemap(
+        topic_counts,
+        path=['topic'],
+        values='count',
+        color='count',
+        color_continuous_scale=[[0, '#440154'], [0.25, '#3b528b'], [0.5, '#21918c'], [0.75, '#5ec962'], [1, '#C7E1BA']],
+        title=None
+    )
+    
+    fig_treemap.update_layout(
+        **layout_template,
+        height=500,
+        margin=dict(t=30, b=30, l=30, r=30),
+        coloraxis_showscale=False
+    )
+    
+    fig_treemap.update_traces(
+        textinfo='label+value',
+        textfont=dict(size=12, color='white'),
+        hovertemplate='Topic: %{label}<br>Tweet Count: %{value:,}<extra></extra>'
+    )
+    
+    st.plotly_chart(fig_treemap, use_container_width=True, config=plot_config)
+
+st.markdown("---")
+
+# ==================== VISUALIZATION 8 & 9: Topic Analysis (Side by Side) ====================
+st.subheader("Topic Analysis")
+
+# First row: Titles
+topic_title_col1, topic_title_col2 = st.columns(2)
+with topic_title_col1:
+    st.markdown("**Tweet Count by Topic and Party Source**")
+with topic_title_col2:
+    st.markdown("**Engagement Score by Topic**")
+
+# Second row: Filters
+topic_filter_col1, topic_filter_col2 = st.columns(2)
+with topic_filter_col1:
+    topic_parties_filter = st.multiselect("Select Parties", ['PMLN', 'PPP', 'PTI'], default=['PMLN', 'PPP', 'PTI'], key='topic_parties')
+with topic_filter_col2:
+    top_n_topics = st.slider("Number of Topics", min_value=5, max_value=30, value=10, key='top_n_topics')
+
+# Add fixed spacer
+st.markdown('<div style="height: 20px;"></div>', unsafe_allow_html=True)
+
+# Third row: Charts
+topic_chart_col1, topic_chart_col2 = st.columns(2)
+
+if 'topic' in filtered_df.columns and 'party' in filtered_df.columns:
+    # Get top 10 topics by count
+    top_topics = filtered_df['topic'].value_counts().head(10).index.tolist()
+    
+    # Filter for top topics
+    topic_df = filtered_df[filtered_df['topic'].isin(top_topics)]
+    
+    # CHART 1: Tweet Count by Topic and Party Source (Grouped Bar)
+    with topic_chart_col1:
+        topic_party_counts = topic_df.groupby(['topic', 'party']).size().reset_index(name='count')
+        
+        # Order topics by total count
+        topic_order = topic_df['topic'].value_counts().index.tolist()
+        
+        fig_topic_bar = go.Figure()
+        
+        parties_to_show = topic_parties_filter if topic_parties_filter else ['PMLN', 'PPP', 'PTI']
+        for party in parties_to_show:
+            party_data = topic_party_counts[topic_party_counts['party'] == party]
+            party_dict = dict(zip(party_data['topic'], party_data['count']))
+            ordered_values = [party_dict.get(topic, 0) for topic in topic_order]
+            
+            fig_topic_bar.add_trace(go.Bar(
+                x=topic_order,
+                y=ordered_values,
+                name=party,
+                marker_color=PARTY_COLORS.get(party),
+                hovertemplate='Topic: %{x}<br>Party: ' + party + '<br>Count: %{y:,}<extra></extra>'
+            ))
+        
+        fig_topic_bar.update_layout(
+            **layout_template,
+            xaxis_title="Topic",
+            yaxis_title="Tweet Count",
+            height=450,
+            barmode='group',
+            legend=dict(
+                orientation='h', 
+                yanchor='bottom', 
+                y=1.02, 
+                xanchor='left', 
+                x=0, 
+                font=dict(color=TEXT_COLOR),
+                itemsizing='constant'
+            ),
+            xaxis=dict(
+                tickfont=dict(color=TEXT_COLOR, size=9), 
+                title_font=dict(color=TEXT_COLOR), 
+                gridcolor='#2d4d2d',
+                tickangle=45,
+                categoryorder='array',
+                categoryarray=topic_order
+            ),
+            yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d4d2d'),
+            margin=dict(b=120, t=60)
+        )
+        
+        st.plotly_chart(fig_topic_bar, use_container_width=True, config=plot_config)
+    
+    # CHART 2: Engagement Score by Topic (Filled Bar Chart)
+    with topic_chart_col2:
+        if 'engagement_score' in filtered_df.columns:
+            # Get top N topics by engagement score
+            topic_engagement = filtered_df.groupby('topic')['engagement_score'].sum().reset_index()
+            topic_engagement = topic_engagement.sort_values('engagement_score', ascending=False).head(top_n_topics)
+            
+            fig_engagement_bar = go.Figure()
+            
+            fig_engagement_bar.add_trace(go.Bar(
+                x=topic_engagement['topic'],
+                y=topic_engagement['engagement_score'],
+                marker_color='#628B61',
+                hovertemplate='Topic: %{x}<br>Engagement Score: %{y:,.0f}<extra></extra>'
+            ))
+            
+            fig_engagement_bar.update_layout(
+                **layout_template,
+                xaxis_title="Topic",
+                yaxis_title="Engagement Score",
+                height=450,
+                showlegend=False,
+                xaxis=dict(
+                    tickfont=dict(color=TEXT_COLOR, size=8), 
+                    title_font=dict(color=TEXT_COLOR), 
+                    gridcolor='#2d4d2d',
+                    tickangle=45,
+                    categoryorder='total descending'
+                ),
+                yaxis=dict(tickfont=dict(color=TEXT_COLOR), title_font=dict(color=TEXT_COLOR), gridcolor='#2d4d2d'),
+                margin=dict(b=150, t=60)
+            )
+            
+            st.plotly_chart(fig_engagement_bar, use_container_width=True, config=plot_config)
 
 # Footer
 st.markdown("---")
