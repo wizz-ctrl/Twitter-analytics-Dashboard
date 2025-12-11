@@ -1164,7 +1164,7 @@ st.markdown("""
     <p style='margin: 2px 0;'>Roshan Jalil</p>
     <p style='margin: 2px 0;'>Syed Fawwad Ahmad</p>
     <br>
-    <p style='margin-top: 10px;'>© 2024 All Rights Reserved</p>
+    <p style='margin-top: 10px;'>©2025 All Rights Reserved</p>
     <p style='margin-top: 5px;'>
         <a href='https://github.com/wizz-ctrl/Twitter-analytics-Dashboard' target='_blank' style='color: #C7E1BA;'>
           Access Code & Dataset on GitHub
